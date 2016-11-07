@@ -1,7 +1,8 @@
+package neatimplementation;
 public class ConnectionGene
 {
     public final int inNode, outNode;
-    public final double weight;
+    public double weight;
     public final boolean expressed;
     public final int innovationNum;
     
@@ -12,5 +13,11 @@ public class ConnectionGene
         this.weight = weight;
         this.expressed = expressed;
         this.innovationNum = innovationNum;
+    }
+    
+    @Override
+    public ConnectionGene clone()
+    {
+        return new ConnectionGene(inNode, outNode, weight, expressed, innovationNum);
     }
 }
