@@ -7,7 +7,7 @@ public class Population
 {
     private final double thresholdDifference, c1, c2, c3;
     private final int size;
-    private final List<Species> species;
+    private List<Species> species;
     
     public Population(Genome initialGenome)
     {
@@ -23,7 +23,7 @@ public class Population
         this.c3 = c3;
         this.species = new ArrayList<>();
         this.species.add(new Species(initialGenome.clone()));
-        for (int i = 0; i < this.size - 1; i++)
+        for (int i = 0; i < this.size; i++)
         {
             this.species.get(0).add(initialGenome);
         }
@@ -60,5 +60,23 @@ placingGenomes:for (Genome g : genomes)
             s.add(g);
             newSpecies.add(s);
         }
+        // remove empty species
+        for (int i = 0; i < newSpecies.size(); i++)
+        {
+            if (newSpecies.get(i).isEmpty())
+            {
+                newSpecies.remove(i);
+            }
+        }
+        this.species = newSpecies;
+    }
+    
+    /**
+     * Number of species in the population
+     * @return the number of species
+     */
+    public int numSpecies()
+    {
+        return this.species.size();
     }
 }

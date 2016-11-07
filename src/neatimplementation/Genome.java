@@ -93,8 +93,8 @@ public class Genome
             E = this.connectionGenes.size() - thisGeneIndex;
         }
         W = (numMatchingGenes != 0) ? W / numMatchingGenes : 0.0;
-        System.out.println("W = " + W);
-        System.out.println("numMatchingGenes = " + numMatchingGenes);
+        //System.out.println("W = " + W);
+        //System.out.println("numMatchingGenes = " + numMatchingGenes);
         return (c1 * E + c2 * D)/N + c3 * W;
     }
     

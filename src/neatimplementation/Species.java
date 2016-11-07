@@ -36,7 +36,7 @@ public class Species
     
     public boolean isEmpty()
     {
-        return this.genomes.size() > 0;
+        return this.genomes.size() == 0;
     }
     
     public Genome representative()
