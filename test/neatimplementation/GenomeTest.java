@@ -8,8 +8,6 @@ import java.util.Arrays;
 import org.junit.Before;
 import org.junit.Test;
 
-import static neatimplementation.NodeType.*;
-
 public class GenomeTest
 {
     Genome genome1, genome2;
@@ -137,5 +135,66 @@ public class GenomeTest
         distance = genome2.distance(genome1, c1, c2, c3);
         expectedDistance = (c1 * 1 + c2 * 2) / 7 + c3 * (3.0 / 5.0);
         assertTrue("Error, expected distance " + expectedDistance + " but got distance " + distance, expectedDistance == distance);
+    }
+    
+    /**
+     * Tests if the wouldMakeRecurrent method works properly
+     */
+    @Test
+    public void wouldMakeRecurrentTest()
+    {
+        before();
+        assertTrue(genome1.wouldMakeRecurrent(new ConnectionGene(3, 3, 0, true, 10)));
+        assertTrue(genome1.wouldMakeRecurrent(new ConnectionGene(3, 2, 0, true, 10)));
+        assertFalse(genome1.wouldMakeRecurrent(new ConnectionGene(3, 4, 0, true, 10)));
+        assertFalse(genome1.wouldMakeRecurrent(new ConnectionGene(2, 4, 0, true, 10)));
+        assertFalse(genome1.wouldMakeRecurrent(new ConnectionGene(4, 3, 0, true, 10)));
+        genome1.connectionGenes.add(new ConnectionGene(3, 4, 0, true, 10));
+        assertTrue(genome1.wouldMakeRecurrent(new ConnectionGene(4, 3, 0, true, 10)));
+        
+        // test with some more complex genome
+        NodeGene[] nodeGenes = new NodeGene[]
+        {
+            new NodeGene(NodeType.INPUT),
+            new NodeGene(NodeType.INPUT),
+            new NodeGene(NodeType.HIDDEN),
+            new NodeGene(NodeType.HIDDEN),
+            new NodeGene(NodeType.HIDDEN),
+            new NodeGene(NodeType.OUTPUT),
+            new NodeGene(NodeType.OUTPUT)
+        };
+        ArrayList<NodeGene> nodeGenesList = new ArrayList<>();
+        for (NodeGene g : nodeGenes)
+        {
+            nodeGenesList.add(g);
+        }
+        ConnectionGene[] connectionGenes = new ConnectionGene[]
+        {
+            new ConnectionGene(0, 2, 1, true, 0),
+            new ConnectionGene(1, 2, 1, true, 1),
+            new ConnectionGene(1, 4, 1, true, 1),
+            new ConnectionGene(3, 2, 1, true, 2),
+            new ConnectionGene(2, 4, 1, true, 3),
+            new ConnectionGene(1, 3, 1, true, 4),
+            new ConnectionGene(4, 6, 1, true, 4),
+            new ConnectionGene(3, 5, 1, true, 4)
+        };
+        ArrayList<ConnectionGene> connectionGenesList = new ArrayList<>();
+        for (ConnectionGene g : connectionGenes)
+        {
+            connectionGenesList.add(g);
+        }
+        Genome genome2 = new Genome(nodeGenesList, connectionGenesList);
+        assertTrue(genome2.wouldMakeRecurrent(new ConnectionGene(4, 3, 1, true, 10)));
+        assertFalse(genome2.wouldMakeRecurrent(new ConnectionGene(3, 4, 1, true, 10)));
+        assertTrue(genome2.wouldMakeRecurrent(new ConnectionGene(5, 3, 1, true, 10)));
+        assertTrue(genome2.wouldMakeRecurrent(new ConnectionGene(6, 3, 1, true, 10)));
+        assertTrue(genome2.wouldMakeRecurrent(new ConnectionGene(6, 2, 1, true, 10)));
+        assertFalse(genome2.wouldMakeRecurrent(new ConnectionGene(1, 4, 1, true, 10)));
+        assertFalse(genome2.wouldMakeRecurrent(new ConnectionGene(0, 4, 1, true, 10)));
+        assertFalse(genome2.wouldMakeRecurrent(new ConnectionGene(5, 2, 1, true, 10)));
+        genome2.connectionGenes.add(new ConnectionGene(5, 2, 1, true, 10));
+        assertTrue(genome2.wouldMakeRecurrent(new ConnectionGene(6, 5, 1, true, 10)));
+        assertTrue(genome2.wouldMakeRecurrent(new ConnectionGene(4, 5, 1, true, 10)));
     }
 }

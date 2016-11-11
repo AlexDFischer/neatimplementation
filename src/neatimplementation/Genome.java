@@ -99,16 +99,6 @@ public class Genome
     }
     
     /**
-     * Crosses over the two genomes, returning their offspring
-     * @param g the other parent to cross with this
-     * @return
-     */
-    public Genome matchMutate(Genome g)
-    {
-        return null; //TODO
-    }
-    
-    /**
      * Returns the output of the network with the given input
      * @param input the inputs to the network. Array must have same length as
      * number of inputs
@@ -118,23 +108,12 @@ public class Genome
     public double[] propogate(double[] input)
     {
         // build a structure that allows us to calculate it from the output backwards
-        Node[] nodes = new Node[nodeGenes.size()];
+        Node[] nodes = usableNetwork();
         for (int i = 0; i < nodeGenes.size(); i++)
         {
-            nodes[i] = new Node(nodeGenes.get(i).type);
             if (nodeGenes.get(i).type == NodeType.INPUT)
             {
                 nodes[i].activation = input[i];
-            }
-        }
-        for (ConnectionGene c : connectionGenes)
-        {
-            if (c.expressed)
-            {
-                Node outNode = nodes[c.outNode];
-                Node inNode = nodes[c.inNode];
-                outNode.inputs.add(inNode);
-                outNode.weights.add(c.weight);
             }
         }
         // set up output array
@@ -154,6 +133,64 @@ public class Genome
             outputDoubles[i] = (double)outputs.get(i);
         }
         return outputDoubles;
+    }
+    
+    /**
+     * Creates a more usable linked graph structure
+     * @return a list of {@link Node} instances complete with their connections
+     */
+    private Node[] usableNetwork()
+    {
+        Node[] nodes = new Node[nodeGenes.size()];
+        for (int i = 0; i < nodeGenes.size(); i++)
+        {
+            nodes[i] = new Node(nodeGenes.get(i).type);
+        }
+        for (ConnectionGene c : connectionGenes)
+        {
+            if (c.expressed)
+            {
+                Node outNode = nodes[c.outNode];
+                Node inNode = nodes[c.inNode];
+                outNode.inputs.add(inNode);
+                outNode.weights.add(c.weight);
+            }
+        }
+        return nodes;
+    }
+    
+    /**
+     * Tells whether or not this connection gene would make the network recurrent
+     * @param c the connection in questions
+     * @return true if c would make the network recurrent, false otherwise
+     */
+    public boolean wouldMakeRecurrent(ConnectionGene c)
+    {
+        // see if we can get from c.inNode to c.outNode going backwards via inputs
+        Node[] nodes = usableNetwork();
+        // perform a depth first search: if we get to an input, that's the end of this branch
+        return wouldMakeRecurrentHelper(nodes[c.inNode], nodes[c.outNode]);
+    }
+    
+    private boolean wouldMakeRecurrentHelper(Node currentNode, Node nodeToSearchFor)
+    {
+        if (currentNode == nodeToSearchFor)
+        {
+            return true;
+        } else if (currentNode.type == NodeType.INPUT)
+        {
+            return false;
+        } else
+        {
+            for (Node n : currentNode.inputs)
+            {
+                if (wouldMakeRecurrentHelper(n, nodeToSearchFor))
+                {
+                    return true;
+                }
+            }
+            return false;
+        }
     }
 
     private static class Node
