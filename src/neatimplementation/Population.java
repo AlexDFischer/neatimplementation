@@ -8,6 +8,7 @@ public class Population
     private final double thresholdDifference, c1, c2, c3;
     private final int size;
     private List<Species> species;
+    private int maxSpeciesIdentifier = -1;
     
     public Population(Genome initialGenome)
     {
@@ -22,11 +23,30 @@ public class Population
         this.c2 = c2;
         this.c3 = c3;
         this.species = new ArrayList<>();
-        this.species.add(new Species(initialGenome.clone()));
+        this.maxSpeciesIdentifier++;
+        this.species.add(new Species(initialGenome.clone(), this.maxSpeciesIdentifier));
         for (int i = 0; i < this.size; i++)
         {
             this.species.get(0).add(initialGenome);
         }
+    }
+    
+    /**
+     * Returns the number of genomes in this population
+     * @return the size
+     */
+    public int getSize()
+    {
+        return this.size;
+    }
+    
+    /**
+     * Returns the List of species in this population
+     * @return the list of species
+     */
+    public List<Species> getSpecies()
+    {
+        return this.species;
     }
     
     /**
@@ -42,7 +62,7 @@ public class Population
             if (!s.isEmpty())
             {
                 // use the first genome in previous generation's species as representative
-                newSpecies.add(new Species(s.get(0)));
+                newSpecies.add(new Species(s.get(0), s.identifier));
             }
         }
 placingGenomes:for (Genome g : genomes)
@@ -56,7 +76,8 @@ placingGenomes:for (Genome g : genomes)
                 }
             }
             // g is not in any existing species
-            Species s = new Species(g);
+            this.maxSpeciesIdentifier++;
+            Species s = new Species(g, this.maxSpeciesIdentifier);
             s.add(g);
             newSpecies.add(s);
         }
@@ -66,6 +87,7 @@ placingGenomes:for (Genome g : genomes)
             if (newSpecies.get(i).isEmpty())
             {
                 newSpecies.remove(i);
+                i--;
             }
         }
         this.species = newSpecies;
@@ -78,5 +100,19 @@ placingGenomes:for (Genome g : genomes)
     public int numSpecies()
     {
         return this.species.size();
+    }
+    
+    /**
+     * Calculates the sum of the fitness of each species
+     * @return the computed sum
+     */
+    public double sumFitness(FitnessFunction f)
+    {
+        double result = 0.0;
+        for (Species s : this.species)
+        {
+            result += s.averageFitness(f);
+        }
+        return result;
     }
 }

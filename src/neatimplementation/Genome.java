@@ -1,6 +1,7 @@
 package neatimplementation;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Random;
 
 public class Genome
 {
@@ -99,6 +100,55 @@ public class Genome
     }
     
     /**
+     * Mutates the connection weights in this genome.
+     * @param r the {@link Math.Random} object to use
+     * @param probabilityUniformlyPerturbed the probability that a weight will
+     * be uniformly perturbed
+     * @param pertubationRange if a weight is uniformly perturbed, the range in
+     * which it will be perturbed. The new weight will be in the set
+     * [weight - pertubationRange, weight + pertubationRange]
+     * @param newRandomValStdDev if a weight is assigned a new random value
+     * instead of uniformly perturbed, the standard deviation to use to assign
+     * a new weight to the connection
+     */
+    public void mutateConnectionWeights(Random r, double probabilityUniformlyPerturbed, double pertubationRange, double newRandomValStdDev)
+    {
+        for (ConnectionGene c : this.connectionGenes)
+        {
+            double p = r.nextDouble();
+            if (p < probabilityUniformlyPerturbed)
+            {
+                // we are doing uniform pertubation, not new random value
+                c.weight += (r.nextDouble() * 2 - 1) * pertubationRange;
+            } else
+            {
+                // we are assigning a new random value, not uniformly perturbing
+                c.weight = r.nextGaussian() * newRandomValStdDev;
+            }
+        }
+    }
+    
+    /**
+     * Returns a new genome with mutated connection weights
+     * @param r the {@link Math.Random} object to use
+     * @param probabilityUniformlyPerturbed the probability that a weight will
+     * be uniformly perturbed
+     * @param pertubationRange if a weight is uniformly perturbed, the range in
+     * which it will be perturbed. The new weight will be in the set
+     * [weight - pertubationRange, weight + pertubationRange]
+     * @param newRandomValStdDev if a weight is assigned a new random value
+     * instead of uniformly perturbed, the standard deviation to use to assign
+     * a new weight to the connection
+     * @return the new Genome
+     */
+    public Genome mutateWithoutCrossover(Random r, double probabilityUniformlyPerturbed, double pertubationRange, double newRandomValStdDev)
+    {
+        Genome g = this.clone();
+        g.mutateConnectionWeights(r, probabilityUniformlyPerturbed, pertubationRange, newRandomValStdDev);
+        return g;
+    }
+    
+    /**
      * Returns the output of the network with the given input
      * @param input the inputs to the network. Array must have same length as
      * number of inputs
@@ -133,6 +183,30 @@ public class Genome
             outputDoubles[i] = (double)outputs.get(i);
         }
         return outputDoubles;
+    }
+    
+    /**
+     * Returns a String representation of this Genome. The format will be a
+     * newline-separated list of connections as follows:
+     * 0: 0 -> 2 (0.05)
+     * 1: 0 -> 3 (-0.5)
+     * 2: 2 -> 3 (0.078)
+     * 5: 1 -> 1 (-1.429)
+     * ...
+     * Where the first number is the innovation number, the second is the in
+     * node, the third is the out node, and the fourth is the connection weight
+     * for each connection.
+     * @return the String in the above format
+     */
+    @Override
+    public String toString()
+    {
+        String result = "";
+        for (ConnectionGene c : this.connectionGenes)
+        {
+            result += c.innovationNum + ": " + c.inNode + " -> " + c.outNode + " (" + c.weight + ")\n";
+        }
+        return result;
     }
     
     /**
