@@ -15,6 +15,8 @@ public class NEATDriver
     private int generationNumber = 0;
     private int innovationNumber;
     
+    private List<ConnectionGene> existingMutations = new ArrayList<>();
+    
     public double
         proportionMutateWithoutCrossover = Static.DEFAULT_PROPORTION_MUTATE_WITHOUT_CROSSOVER,
         probabilityUniformlyPerturbed = Static.DEFAULT_PROBABILITY_UNIFORMLY_PERTURBED,
@@ -35,11 +37,46 @@ public class NEATDriver
         this.population = new Population(populationSize, thresholdDifference, c1, c2, c3, initialGenome);
         this.fitnessFunction = fitnessFunction;
         this.innovationNumber = initialGenome.connectionGenes.size() - 1;
+        for (ConnectionGene c : initialGenome.connectionGenes)
+        {
+            this.existingMutations.add(c);
+        }
     }
     
     public NEATDriver(Genome initialGenome, FitnessFunction fitnessFunction)
     {
         this(Static.DEFAULT_POP_SIZE, Static.DEFAULT_THRESHOLD_DIFFERENCE, Static.DEFAULT_C1, Static.DEFAULT_C2, Static.DEFAULT_C3, initialGenome, fitnessFunction);
+    }
+    
+    private int assignInnovationNumber(int inNode, int outNode)
+    {
+        for (int i = 0; i < this.existingMutations.size(); i++)
+        {
+            if (existingMutations.get(i).inNode == inNode && existingMutations.get(i).outNode == outNode)
+            {
+                return i;
+            }
+        }
+        this.innovationNumber++;
+        this.existingMutations.add(new ConnectionGene(inNode, outNode, 1, true, this.innovationNumber));
+        return innovationNumber;
+    }
+    
+    /**
+     * Index in this.existingMutations of the first equivalent connection
+     * @param c the new connection to search for
+     * @return the index, or -1 if not found
+     */
+    private int indexOfEquivalent(ConnectionGene c)
+    {
+        for (int i = 0; i < this.existingMutations.size(); i++)
+        {
+            if (c.equivalent(existingMutations.get(i)))
+            {
+                return i;
+            }
+        }
+        return -1;
     }
     
     private int indexOfMax(double[] array)
@@ -55,6 +92,38 @@ public class NEATDriver
             }
         }
         return index;
+    }
+    
+    /**
+     * inserts the given gene into the list in sorted order
+     * @param connectionGenes
+     * @param c
+     */
+    private void insertConnection(List<ConnectionGene> list, ConnectionGene c)
+    {
+        if (list.isEmpty() || c.innovationNum < list.get(0).innovationNum)
+        {
+            list.add(0, c);
+            return;
+        }
+        for (int i = 1; i < list.size(); i++)
+        {
+            if (c.innovationNum == list.get(i-1).innovationNum)
+            {
+                return; // don't insert a duplicate
+            } else if (list.get(i-1).innovationNum < c.innovationNum && c.innovationNum < list.get(i).innovationNum)
+            {
+                list.add(i, c);
+                return;
+            }
+        }
+        if (c.innovationNum == list.get(list.size()-1).innovationNum)
+        {
+            return; // don't insert a duplicate
+        } else
+        {
+            list.add(list.size(), c);
+        }
     }
     
     public Genome mostFitGenome()
@@ -137,8 +206,7 @@ public class NEATDriver
             // now do the mutations with crossover
             for (int j = 0; j < numMutateWithCrossover; j++)
             {
-                // TODO use a better method to determine which genomes to mate
-                newGenomes.add(crossOver(r, sortedGenomes[j % sortedGenomes.length], sortedGenomes[(j + 1) % sortedGenomes.length]));
+                newGenomes.add(crossOver(r, sortedGenomes[(j / sortedGenomes.length) % sortedGenomes.length], sortedGenomes[j % sortedGenomes.length]));
             }
         }
         
@@ -187,26 +255,20 @@ public class NEATDriver
             toSplit.expressed = false;
             newGenome.nodeGenes.add(new NodeGene(NodeType.HIDDEN));
             int newNodeNum = newGenome.nodeGenes.size() - 1;
-            this.innovationNumber++;
-            ConnectionGene c1 = new ConnectionGene(toSplit.inNode, newNodeNum, 1, true, this.innovationNumber);
-            this.innovationNumber++;
-            ConnectionGene c2 = new ConnectionGene(newNodeNum, toSplit.outNode, toSplit.weight, true, this.innovationNumber);
-            newGenome.connectionGenes.add(c1);
-            newGenome.connectionGenes.add(c2);
+            ConnectionGene c1 = new ConnectionGene(toSplit.inNode, newNodeNum, 1, true, assignInnovationNumber(toSplit.inNode, newNodeNum));
+            ConnectionGene c2 = new ConnectionGene(newNodeNum, toSplit.outNode, toSplit.weight, true, assignInnovationNumber(newNodeNum, toSplit.outNode));
+            insertConnection(newGenome.connectionGenes, c1);
+            insertConnection(newGenome.connectionGenes, c2);
         }
         if (r.nextDouble() < probabilityNewConnection)
         {
             int inNode = r.nextInt(newGenome.nodeGenes.size());
             // can't have a bias or input node be the output of a connection
             int outNode = r.nextInt(newGenome.nodeGenes.size() - newGenome.getNumInputs() - newGenome.getNumBiases()) + newGenome.getNumInputs() + newGenome.getNumBiases();
-            this.innovationNumber++;
-            ConnectionGene newConnection = new ConnectionGene(inNode, outNode, 1, true, this.innovationNumber);
-            if (newGenome.wouldMakeRecurrent(newConnection))
+            if (!newGenome.wouldMakeRecurrent(inNode, outNode))
             {
-                this.innovationNumber--;
-            } else
-            {
-                newGenome.connectionGenes.add(newConnection);
+                ConnectionGene newConnection = new ConnectionGene(inNode, outNode, 1, true, assignInnovationNumber(inNode, outNode));
+                insertConnection(newGenome.connectionGenes, newConnection);
             }
         }
         return newGenome;
@@ -356,5 +418,19 @@ public class NEATDriver
             
         }
         return newGenome;
+    }
+    
+    /**
+     * Finds a valid new connection to make given the following conditions:
+     * * A new connection must not duplicate any other connections
+     * * A new connection must not make the network recurrent
+     * @param r Random object to use
+     * @param g the genome in question
+     * @return a ConnectionGene representing the new connection, with weight 1
+     */
+    private ConnectionGene validNewConnection(Random r, Genome g)
+    {
+        // TODO
+        return null;
     }
 }

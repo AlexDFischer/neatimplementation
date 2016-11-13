@@ -227,7 +227,7 @@ public class Genome
         String result = "";
         for (ConnectionGene c : this.connectionGenes)
         {
-            result += c.innovationNum + ": " + c.inNode + " -> " + c.outNode + " (" + c.weight + ")\n";
+            result += c.innovationNum + ": " + c.inNode + " -> " + c.outNode + " (weight: " + c.weight + ", enabled: " + c.expressed + ")\n";
         }
         return result;
     }
@@ -263,10 +263,22 @@ public class Genome
      */
     public boolean wouldMakeRecurrent(ConnectionGene c)
     {
+        return wouldMakeRecurrent(c.inNode, c.outNode);
+    }
+    
+    /**
+     * Tells whether or not a new connection with the given inputs and outputs
+     * would make the network recurrent
+     * @param inNode the input of the hypothetical connection
+     * @param outNode the output of the hypothetical connection
+     * @return true if it would make the network recurrent, false otherwise
+     */
+    public boolean wouldMakeRecurrent(int inNode, int outNode)
+    {
         // see if we can get from c.inNode to c.outNode going backwards via inputs
         Node[] nodes = usableNetwork();
         // perform a depth first search: if we get to an input, that's the end of this branch
-        return wouldMakeRecurrentHelper(nodes[c.inNode], nodes[c.outNode]);
+        return wouldMakeRecurrentHelper(nodes[inNode], nodes[outNode]);
     }
     
     private boolean wouldMakeRecurrentHelper(Node currentNode, Node nodeToSearchFor)
@@ -274,7 +286,7 @@ public class Genome
         if (currentNode == nodeToSearchFor)
         {
             return true;
-        } else if (currentNode.type == NodeType.INPUT)
+        } else if (currentNode.type == NodeType.INPUT && currentNode.type == NodeType.BIAS)
         {
             return false;
         } else

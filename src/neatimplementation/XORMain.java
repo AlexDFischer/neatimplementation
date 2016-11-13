@@ -9,14 +9,14 @@ public class XORMain
         NEATDriver driver = new NEATDriver
         (
             100,
-            2.0,
+            1.5,
             Static.DEFAULT_C1,
             Static.DEFAULT_C2,
             Static.DEFAULT_C3,
             initialGenome, 
             f
         );
-        driver.proportionMutateWithoutCrossover = 0.75; // change this to 0.75 to debug
+        driver.proportionMutateWithoutCrossover = 0.75;
         while (f.fitness(driver.mostFitGenome()) < 3.9)
         {
             driver.printDetailedStatusReport();

@@ -20,4 +20,14 @@ public class ConnectionGene
     {
         return new ConnectionGene(inNode, outNode, weight, expressed, innovationNum);
     }
+    
+    /**
+     * Tells whether two connections are equivalent, ie, have the same in/out nodes
+     * @param that the other ConnectionGene to compare this to
+     * @return true if they are equivalent, false otherwise
+     */
+    public boolean equivalent(ConnectionGene that)
+    {
+        return this.inNode == that.inNode && this.outNode == that.outNode;
+    }
 }
