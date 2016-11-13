@@ -4,26 +4,26 @@ public class XORMain
 {
     public static void main(String[] args)
     {
-        Genome initialGenome = Static.notYetXORGenome();
+        Genome initialGenome = Static.blankXORGenome();
         FitnessFunction f = new XORFitnessFunction();
         NEATDriver driver = new NEATDriver
         (
             100,
-            1.0,
+            2.0,
             Static.DEFAULT_C1,
             Static.DEFAULT_C2,
             Static.DEFAULT_C3,
             initialGenome, 
             f
         );
-        driver.proportionMutateWithoutCrossover = 1.0;
-        while (f.fitness(driver.mostFitGenome()) < 3.99)
+        driver.proportionMutateWithoutCrossover = 0.75; // change this to 0.75 to debug
+        while (f.fitness(driver.mostFitGenome()) < 3.9)
         {
-            driver.printStatusReport();
+            driver.printDetailedStatusReport();
+            System.out.println("_______________");
             driver.nextGeneration();
         }
-        driver.printStatusReport();
-        driver.nextGeneration();
+        driver.printDetailedStatusReport();
         System.out.println(driver.mostFitGenome().toString());
     }
 }

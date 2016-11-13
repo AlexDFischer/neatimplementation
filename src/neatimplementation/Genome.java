@@ -7,7 +7,7 @@ public class Genome
 {
     public final ArrayList<NodeGene> nodeGenes;
     public final ArrayList<ConnectionGene> connectionGenes;
-    public final int numOutputs;
+    private final int numBiases, numInputs, numOutputs;
     
     /**
      * Creates a new genome with the given genes.
@@ -19,14 +19,22 @@ public class Genome
     {
         this.nodeGenes = nodeGenes;
         this.connectionGenes = connectionGenes;
-        int numOutputs = 0;
+        int numBiases = 0, numInputs = 0, numOutputs = 0;
         for (NodeGene nodeGene : nodeGenes)
         {
-            if (nodeGene.type == NodeType.OUTPUT)
+            if (nodeGene.type == NodeType.BIAS)
+            {
+                numBiases++;
+            } else if (nodeGene.type == NodeType.INPUT)
+            {
+                numInputs++;
+            } else if (nodeGene.type == NodeType.OUTPUT)
             {
                 numOutputs++;
             }
         }
+        this.numBiases = numBiases;
+        this.numInputs = numInputs;
         this.numOutputs = numOutputs;
     }
     
@@ -97,6 +105,21 @@ public class Genome
         //System.out.println("W = " + W);
         //System.out.println("numMatchingGenes = " + numMatchingGenes);
         return (c1 * E + c2 * D)/N + c3 * W;
+    }
+    
+    public int getNumBiases()
+    {
+        return this.numBiases;
+    }
+    
+    public int getNumInputs()
+    {
+        return this.numInputs;
+    }
+    
+    public int getNumOutputs()
+    {
+        return this.numOutputs;
     }
     
     /**

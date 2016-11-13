@@ -8,7 +8,7 @@ public class NEATDriver
 {
     private Random r = new Random(System.currentTimeMillis());
     
-    private final double c1, c2, c3;
+    public final double c1, c2, c3;
     private Population population;
     private final FitnessFunction fitnessFunction;
     
@@ -19,7 +19,11 @@ public class NEATDriver
         proportionMutateWithoutCrossover = Static.DEFAULT_PROPORTION_MUTATE_WITHOUT_CROSSOVER,
         probabilityUniformlyPerturbed = Static.DEFAULT_PROBABILITY_UNIFORMLY_PERTURBED,
         pertubationRange = Static.DEFAULT_PERTUBATION_RANGE,
-        newRandomValStdDev = Static.DEFAULT_NEW_RANDOM_VAL_STD_DEV;
+        newRandomValStdDev = Static.DEFAULT_NEW_RANDOM_VAL_STD_DEV,
+        probabilityParentGeneDisabledStillDisabled = Static.DEFAULT_PROBABILITY_PARENT_GENE_DISABLED_STILL_DISABLED,
+        probabilityMutate = Static.DEFAULT_PROBABILITY_MUTATE,
+        probabilityAddNewNode = Static.DEFAULT_PROBABILITY_ADD_NEW_NODE,
+        probabilityNewConnection = Static.DEFAULT_PROBABILITY_NEW_CONNECTION;
     
     private int minNetworksToCopyMostFitNetwork = Static.DEFAULT_MIN_NETWORKS_TO_COPY_MOST_FIT_NETWORK;
     
@@ -134,7 +138,7 @@ public class NEATDriver
             for (int j = 0; j < numMutateWithCrossover; j++)
             {
                 // TODO use a better method to determine which genomes to mate
-                newGenomes.add(crossOver(sortedGenomes[j % sortedGenomes.length], sortedGenomes[j % sortedGenomes.length]));
+                newGenomes.add(crossOver(r, sortedGenomes[j % sortedGenomes.length], sortedGenomes[(j + 1) % sortedGenomes.length]));
             }
         }
         
@@ -148,6 +152,18 @@ public class NEATDriver
         this.generationNumber++;
     }
     
+    public void printDetailedStatusReport()
+    {
+        System.out.println("ON GENERATION " + this.generationNumber);
+        System.out.println("NUMBER OF SPECIES: " + this.population.getSpecies().size());
+        Genome mostFitGenome = this.mostFitGenome();
+        System.out.println("MAX FITNESS: " + fitnessFunction.fitness(mostFitGenome));
+        for (Species s : this.population.getSpecies())
+        {
+            System.out.println("Species " + s.identifier + " has " + s.size() + " genomes and average fitness " + s.averageFitness(fitnessFunction) + " and max fitness " + fitnessFunction.fitness(s.mostFitSpecies(fitnessFunction)));
+        }
+    }
+    
     public void printStatusReport()
     {
         System.out.println("ON GENERATION " + this.generationNumber);
@@ -156,10 +172,189 @@ public class NEATDriver
         Genome mostFitGenome = this.mostFitGenome();
         System.out.println("MAX FITNESS: " + fitnessFunction.fitness(mostFitGenome));
     }
-
-    private Genome crossOver(Genome genome, Genome genome2)
+    
+    private Genome crossOver(Random r, Genome g1, Genome g2)
     {
-        // TODO Auto-generated method stub
-        return null;
+        Genome newGenome = crossOverNoMutation(r, g1, g2);
+        if (r.nextDouble() < probabilityMutate)
+        {
+            newGenome.mutateConnectionWeights(r, probabilityUniformlyPerturbed, pertubationRange, newRandomValStdDev);
+        }
+        if (r.nextDouble() < probabilityAddNewNode && newGenome.connectionGenes.size() > 0) // there also needs to be existing connections to split
+        {
+            // first find a connection to split, then disable it, then add new node, then add new connections
+            ConnectionGene toSplit = newGenome.connectionGenes.get(r.nextInt(newGenome.connectionGenes.size()));
+            toSplit.expressed = false;
+            newGenome.nodeGenes.add(new NodeGene(NodeType.HIDDEN));
+            int newNodeNum = newGenome.nodeGenes.size() - 1;
+            this.innovationNumber++;
+            ConnectionGene c1 = new ConnectionGene(toSplit.inNode, newNodeNum, 1, true, this.innovationNumber);
+            this.innovationNumber++;
+            ConnectionGene c2 = new ConnectionGene(newNodeNum, toSplit.outNode, toSplit.weight, true, this.innovationNumber);
+            newGenome.connectionGenes.add(c1);
+            newGenome.connectionGenes.add(c2);
+        }
+        if (r.nextDouble() < probabilityNewConnection)
+        {
+            int inNode = r.nextInt(newGenome.nodeGenes.size());
+            // can't have a bias or input node be the output of a connection
+            int outNode = r.nextInt(newGenome.nodeGenes.size() - newGenome.getNumInputs() - newGenome.getNumBiases()) + newGenome.getNumInputs() + newGenome.getNumBiases();
+            this.innovationNumber++;
+            ConnectionGene newConnection = new ConnectionGene(inNode, outNode, 1, true, this.innovationNumber);
+            if (newGenome.wouldMakeRecurrent(newConnection))
+            {
+                this.innovationNumber--;
+            } else
+            {
+                newGenome.connectionGenes.add(newConnection);
+            }
+        }
+        return newGenome;
+    }
+    
+    private Genome crossOverNoMutation(Random r, Genome g1, Genome g2)
+    {
+        ArrayList<NodeGene> nodes = new ArrayList<>();
+        ArrayList<ConnectionGene> connections = new ArrayList<>();
+        // add the input and bias and output nodes of g1 into nodes
+        for (NodeGene g : g1.nodeGenes)
+        {
+            if (g.type == NodeType.INPUT)
+            {
+                nodes.add(new NodeGene(NodeType.INPUT));
+            } else if (g.type == NodeType.BIAS)
+            {
+                nodes.add(new NodeGene(NodeType.BIAS));
+            } else if (g.type == NodeType.OUTPUT)
+            {
+                nodes.add(new NodeGene(NodeType.OUTPUT));
+            } 
+            else
+            {
+                break;
+            }
+        }
+        Genome newGenome = new Genome(nodes, connections);
+        int index1 = 0, index2 = 0;
+        double f1 = fitnessFunction.fitness(g1);
+        double f2 = fitnessFunction.fitness(g2);
+        while (index1 < g1.connectionGenes.size() && index2 < g2.connectionGenes.size())
+        {
+            ConnectionGene c1 = g1.connectionGenes.get(index1);
+            ConnectionGene c2 = g2.connectionGenes.get(index2);
+            
+            
+            if (c1.innovationNum == c2.innovationNum)
+            {   // we are working with two matching genes. select randomly from either parent
+                // but first check to make sure the connection wouldn't make the network recurrent
+                ConnectionGene randomlySelected = (r.nextDouble() < 0.5 ? c1 : c2).clone();
+                // ensure we have enough NodeGenes for the connections
+                // add hidden nodes onto the end of the list of node genes
+                int minNeededNode = Math.max(randomlySelected.inNode, randomlySelected.outNode);
+                for (int i = newGenome.nodeGenes.size(); i <= minNeededNode; i++)
+                {
+                    nodes.add(new NodeGene(NodeType.HIDDEN));
+                }
+                if (!newGenome.wouldMakeRecurrent(randomlySelected))
+                {
+                    if (c1.expressed && c2.expressed)
+                    {   // both enabled
+                        connections.add(randomlySelected);
+                    } else
+                    {
+                        // at least one is disabled. there is a chance we reenable them
+                        randomlySelected.expressed = !(r.nextDouble() < probabilityParentGeneDisabledStillDisabled);
+                        connections.add(randomlySelected);
+                    }
+                }
+                index1++;
+                index2++;
+            } else
+            {   // we are working with disjoint genes
+                // inherit disjoint and excess genes from more fit parent (or both if equal fitness)
+                if (c1.innovationNum < c2.innovationNum)
+                {   // c1 is the gene we should be dealing with
+                    if (f1 >= f2)
+                    {
+                        // ensure we have enough NodeGenes for the connections
+                        // add hidden nodes onto the end of the list of node genes
+                        int minNeededNode = Math.max(c1.inNode, c1.outNode);
+                        for (int i = newGenome.nodeGenes.size(); i <= minNeededNode; i++)
+                        {
+                            nodes.add(new NodeGene(NodeType.HIDDEN));
+                        }
+                        if (!newGenome.wouldMakeRecurrent(c1))
+                        {
+                            connections.add(c1.clone());
+                        }
+                    }
+                    index1++;
+                } else
+                {   // c2 is the gene we should be dealing with
+                    if (f2 >= f1)
+                    {
+                        // ensure we have enough NodeGenes for the connections
+                        // add hidden nodes onto the end of the list of node genes
+                        int minNeededNode = Math.max(c2.inNode, c2.outNode);
+                        for (int i = newGenome.nodeGenes.size(); i <= minNeededNode; i++)
+                        {
+                            nodes.add(new NodeGene(NodeType.HIDDEN));
+                        }
+                        if (!newGenome.wouldMakeRecurrent(c2))
+                        {
+                            connections.add(c2.clone());
+                        }
+                    }
+                    index2++;
+                }
+            }
+        }
+        // now we're dealing with excess genes. inherit disjoint and excess genes from more fit parent (or both if equal fitness)
+        if (index1 == g1.connectionGenes.size() && index2 < g2.connectionGenes.size())
+        {   // g2 has excess genes
+            if (f2 >= f1)
+            {
+                for (; index2 < g2.connectionGenes.size(); index2++)
+                {
+                    // ensure we have enough NodeGenes for the connections
+                    // add hidden nodes onto the end of the list of node genes
+                    ConnectionGene c = g2.connectionGenes.get(index2);
+                    int minNeededNode = Math.max(c.inNode, c.outNode);
+                    for (int i = newGenome.nodeGenes.size(); i <= minNeededNode; i++)
+                    {
+                        nodes.add(new NodeGene(NodeType.HIDDEN));
+                    }
+                    if (!newGenome.wouldMakeRecurrent(c))
+                    {
+                        connections.add(c.clone());
+                    }
+                }
+            }
+        } else if (index2 == g2.connectionGenes.size() && index1 < g1.connectionGenes.size())
+        {   // g1 has excess genes
+            if (f1 >= f2)
+            {
+                for (; index1 < g1.connectionGenes.size(); index1++)
+                {
+                    // ensure we have enough NodeGenes for the connections
+                    // add hidden nodes onto the end of the list of node genes
+                    ConnectionGene c = g1.connectionGenes.get(index1);
+                    int minNeededNode = Math.max(c.inNode, c.outNode);
+                    for (int i = newGenome.nodeGenes.size(); i <= minNeededNode; i++)
+                    {
+                        nodes.add(new NodeGene(NodeType.HIDDEN));
+                    }
+                    if (!newGenome.wouldMakeRecurrent(c))
+                    {
+                        connections.add(c.clone());
+                    }
+                }
+            }
+            
+        } else
+        {   // none have any excess genes
+            
+        }
+        return newGenome;
     }
 }
