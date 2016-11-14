@@ -62,23 +62,6 @@ public class NEATDriver
         return innovationNumber;
     }
     
-    /**
-     * Index in this.existingMutations of the first equivalent connection
-     * @param c the new connection to search for
-     * @return the index, or -1 if not found
-     */
-    private int indexOfEquivalent(ConnectionGene c)
-    {
-        for (int i = 0; i < this.existingMutations.size(); i++)
-        {
-            if (c.equivalent(existingMutations.get(i)))
-            {
-                return i;
-            }
-        }
-        return -1;
-    }
-    
     private int indexOfMax(double[] array)
     {
         int index = 0;
@@ -177,12 +160,24 @@ public class NEATDriver
             priorities[i] = fitnesses[i] / Math.sqrt(offspringPerSpecies[i]*(offspringPerSpecies[i]+1));
         }
         
+        /*for (int i = 0; i < priorities.length; i++)
+        {
+            System.out.println("Species " + this.population.getSpecies().get(i).identifier + " has fitness " + this.population.getSpecies().get(i).averageFitness(fitnessFunction) + " and will get " + offspringPerSpecies[i] + " offspring");
+            
+        }*/
+        
         // now, for each species, create the Genomes for the next generation
         List<Genome> newGenomes = new ArrayList<>(this.population.getSize());
         for (int i = 0; i < this.population.numSpecies(); i++)
         {
             Species species = this.population.getSpecies().get(i);
             Genome[] sortedGenomes = species.genomesInDescendingFitnessOrder(fitnessFunction);
+            // cull the bottom half of the species
+            Genome[] culledSortedGenomes = new Genome[sortedGenomes.length / 2 + 1];
+            for (int j = 0; j < culledSortedGenomes.length; j++)
+            {
+                culledSortedGenomes[j] = sortedGenomes[j];
+            }
             int numMutateWithoutCrossover = (int) Math.floor(this.proportionMutateWithoutCrossover * offspringPerSpecies[i]);
             int numMutateWithCrossover = offspringPerSpecies[i] - numMutateWithoutCrossover;
             if (species.size() >= this.minNetworksToCopyMostFitNetwork)
@@ -200,13 +195,13 @@ public class NEATDriver
             // now do the mutations without crossover
             for (int j = 0; j < numMutateWithoutCrossover; j++)
             {
-                newGenomes.add(sortedGenomes[j % sortedGenomes.length].mutateWithoutCrossover(r, probabilityUniformlyPerturbed, pertubationRange, newRandomValStdDev));
+                newGenomes.add(culledSortedGenomes[j % culledSortedGenomes.length].mutateWithoutCrossover(r, probabilityUniformlyPerturbed, pertubationRange, newRandomValStdDev));
                 
             }
             // now do the mutations with crossover
             for (int j = 0; j < numMutateWithCrossover; j++)
             {
-                newGenomes.add(crossOver(r, sortedGenomes[(j / sortedGenomes.length) % sortedGenomes.length], sortedGenomes[j % sortedGenomes.length]));
+                newGenomes.add(crossOver(r, culledSortedGenomes[(j / culledSortedGenomes.length) % culledSortedGenomes.length], culledSortedGenomes[j % culledSortedGenomes.length]));
             }
         }
         
@@ -241,7 +236,19 @@ public class NEATDriver
         System.out.println("MAX FITNESS: " + fitnessFunction.fitness(mostFitGenome));
     }
     
-    private Genome crossOver(Random r, Genome g1, Genome g2)
+    private ConnectionGene randomEnabledConnection(Random r, List<ConnectionGene> connectionGenes)
+    {
+        ConnectionGene c = connectionGenes.get(r.nextInt(connectionGenes.size()));
+        if (c.expressed)
+        {
+            return c;
+        } else
+        {
+            return randomEnabledConnection(r, connectionGenes);
+        }
+    }
+    
+    public Genome crossOver(Random r, Genome g1, Genome g2)
     {
         Genome newGenome = crossOverNoMutation(r, g1, g2);
         if (r.nextDouble() < probabilityMutate)
@@ -251,7 +258,7 @@ public class NEATDriver
         if (r.nextDouble() < probabilityAddNewNode && newGenome.connectionGenes.size() > 0) // there also needs to be existing connections to split
         {
             // first find a connection to split, then disable it, then add new node, then add new connections
-            ConnectionGene toSplit = newGenome.connectionGenes.get(r.nextInt(newGenome.connectionGenes.size()));
+            ConnectionGene toSplit = randomEnabledConnection(r, newGenome.connectionGenes);
             toSplit.expressed = false;
             newGenome.nodeGenes.add(new NodeGene(NodeType.HIDDEN));
             int newNodeNum = newGenome.nodeGenes.size() - 1;
@@ -274,7 +281,7 @@ public class NEATDriver
         return newGenome;
     }
     
-    private Genome crossOverNoMutation(Random r, Genome g1, Genome g2)
+    public Genome crossOverNoMutation(Random r, Genome g1, Genome g2)
     {
         ArrayList<NodeGene> nodes = new ArrayList<>();
         ArrayList<ConnectionGene> connections = new ArrayList<>();
@@ -418,19 +425,5 @@ public class NEATDriver
             
         }
         return newGenome;
-    }
-    
-    /**
-     * Finds a valid new connection to make given the following conditions:
-     * * A new connection must not duplicate any other connections
-     * * A new connection must not make the network recurrent
-     * @param r Random object to use
-     * @param g the genome in question
-     * @return a ConnectionGene representing the new connection, with weight 1
-     */
-    private ConnectionGene validNewConnection(Random r, Genome g)
-    {
-        // TODO
-        return null;
     }
 }

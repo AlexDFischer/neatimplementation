@@ -278,10 +278,10 @@ public class Genome
         // see if we can get from c.inNode to c.outNode going backwards via inputs
         Node[] nodes = usableNetwork();
         // perform a depth first search: if we get to an input, that's the end of this branch
-        return wouldMakeRecurrentHelper(nodes[inNode], nodes[outNode]);
+        return isBackwardsPathTowards(nodes[inNode], nodes[outNode]);
     }
     
-    private boolean wouldMakeRecurrentHelper(Node currentNode, Node nodeToSearchFor)
+    private boolean isBackwardsPathTowards(Node currentNode, Node nodeToSearchFor)
     {
         if (currentNode == nodeToSearchFor)
         {
@@ -293,7 +293,7 @@ public class Genome
         {
             for (Node n : currentNode.inputs)
             {
-                if (wouldMakeRecurrentHelper(n, nodeToSearchFor))
+                if (isBackwardsPathTowards(n, nodeToSearchFor))
                 {
                     return true;
                 }
@@ -302,7 +302,7 @@ public class Genome
         }
     }
 
-    private static class Node
+    private class Node
     {
         double activation = 0;
         boolean hasActivation = false;

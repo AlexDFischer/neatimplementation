@@ -4,19 +4,19 @@ import java.util.ArrayList;
 
 public class Static
 {
-    public static final int DEFAULT_POP_SIZE = 100;
+    public static final int DEFAULT_POP_SIZE = 150;
     public static final double DEFAULT_THRESHOLD_DIFFERENCE = 3.0;
     public static final double DEFAULT_C1 = 1.0, DEFAULT_C2 = 1.0, DEFAULT_C3 = 0.4;
     
     public static final double
-        DEFAULT_PROPORTION_MUTATE_WITHOUT_CROSSOVER = 0.25,
-        DEFAULT_PROBABILITY_UNIFORMLY_PERTURBED = 0.7,
+        DEFAULT_PROPORTION_MUTATE_WITHOUT_CROSSOVER = 0.5,
+        DEFAULT_PROBABILITY_UNIFORMLY_PERTURBED = 0.9,
         DEFAULT_PERTUBATION_RANGE = 1.0,
         DEFAULT_NEW_RANDOM_VAL_STD_DEV = 0.5,
         DEFAULT_PROBABILITY_PARENT_GENE_DISABLED_STILL_DISABLED = 0.75,
         DEFAULT_PROBABILITY_MUTATE = 0.8,
-        DEFAULT_PROBABILITY_ADD_NEW_NODE = 0.03,
-        DEFAULT_PROBABILITY_NEW_CONNECTION = 0.05;
+        DEFAULT_PROBABILITY_ADD_NEW_NODE = 0.05,
+        DEFAULT_PROBABILITY_NEW_CONNECTION = 0.3;
     
     public static final int
         DEFAULT_MIN_NETWORKS_TO_COPY_MOST_FIT_NETWORK = 5;
@@ -33,7 +33,6 @@ public class Static
         {
             new NodeGene(NodeType.INPUT),
             new NodeGene(NodeType.INPUT),
-            new NodeGene(NodeType.BIAS),
             new NodeGene(NodeType.OUTPUT)
         };
         ArrayList<NodeGene> nodeGenesList = new ArrayList<>();
@@ -43,8 +42,8 @@ public class Static
         }
         ConnectionGene[] connectionGenes = new ConnectionGene[]
         {
-            new ConnectionGene(0, 3, 1, true, 0),
-            new ConnectionGene(1, 3, 1, true, 1)
+            new ConnectionGene(0, 2, 0.0, true, 0),
+            new ConnectionGene(1, 2, 0.0, true, 1)
         };
         ArrayList<ConnectionGene> connectionGenesList = new ArrayList<>();
         for (ConnectionGene g : connectionGenes)
